@@ -1,0 +1,1265 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/customer-tokens": {
+      "post": {
+        "description": "Endpoint exclusivo ao servidor, cria ou atualiza o cliente garantindo um token que autentica o cliente em chamadas à API do notifica.dev",
+        "operationId": "CustomerTokensController_mint",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertCustomerDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerTokenResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Emite um token de cliente",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/customers": {
+      "post": {
+        "description": "Faz upsert por `code`, então repetir a chamada é seguro. Passe `issue_token` para receber um token do cliente na mesma resposta, o que o cliente precisa para ler sua inbox.",
+        "operationId": "CustomersController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterCustomerDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Cria ou atualiza um cliente",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/devices": {
+      "post": {
+        "description": "Cria ou atualiza um dispositivo para o app autenticado, com ou sem cliente associado",
+        "operationId": "DevicesController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceWithCustomerDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceInstallationResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Cria ou atualiza um dispositivo",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/me/devices": {
+      "post": {
+        "operationId": "MeDevicesController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDeviceDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceInstallationResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Cria ou atualiza a instalação de dispositivo do cliente atual",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/inbox": {
+      "get": {
+        "description": "Paginado por cursor: envie `meta.nextCursor` de volta como `cursor` para a próxima página. A primeira página vem do cache e é invalidada no momento em que uma notificação chega ou um item é lido.",
+        "operationId": "MeInboxController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "read",
+                "unread"
+              ]
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Id do último item da página anterior, obtido em `meta.nextCursor`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Casa com o título e o corpo, sem diferenciar maiúsculas de minúsculas.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "data_contains",
+            "required": false,
+            "in": "query",
+            "description": "Objeto JSON: devolve só os itens cujo `data` casa com todos os pares informados (no máximo 5). Compara chaves de primeiro nível por igualdade, com valores string, número ou booleano.",
+            "schema": {
+              "example": "{\"conversation_id\":\"1234\"}",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxPageDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Inbox do cliente atual, mais recentes primeiro",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/v1/me/inbox/read": {
+      "post": {
+        "operationId": "MeInboxController_markRead",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkInboxReadDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxReadResultDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Marca um lote de itens como lidos",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/v1/me/inbox/read-all": {
+      "post": {
+        "operationId": "MeInboxController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxReadResultDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Marca todos os itens não lidos como lidos",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/v1/notifications/{id}": {
+      "delete": {
+        "operationId": "NotificationsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Cancela uma notificação agendada antes de ela ser enviada",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/broadcast": {
+      "post": {
+        "operationId": "BroadcastController_broadcast",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BroadcastDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Envia uma notificação para todo cliente que casar com um filtro",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/transactional": {
+      "post": {
+        "operationId": "TransactionalController_transactional",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionalDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationResponseDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "summary": "Envia uma notificação para um único cliente ou dispositivo",
+        "tags": [
+          "notifications"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "notifica.dev API",
+    "description": "Camada central de notificações: acompanhamento de progresso e resolução multicanal",
+    "version": "0.0.1",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "customers",
+      "description": "Registro de clientes e emissão de token de cliente"
+    },
+    {
+      "name": "devices",
+      "description": "Registro de dispositivos de push"
+    },
+    {
+      "name": "notifications",
+      "description": "Disparo e cancelamento de notificações transacionais e campanhas"
+    },
+    {
+      "name": "me",
+      "description": "Endpoints autenticados pelo token do cliente final"
+    },
+    {
+      "name": "inbox",
+      "description": "Leitura e marcação de itens da inbox do cliente"
+    }
+  ],
+  "servers": [
+    {
+      "url": "https://api.notifica.dev",
+      "description": "Production"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Chave do app. Enviada pelo seu servidor para registrar clientes/dispositivos e disparar notificações — nunca deve ser exposta a um cliente final."
+      },
+      "CustomerTokenAuth": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "description": "Token de cliente, emitido pelo seu servidor via POST /customer-tokens. Usado pelo dispositivo do cliente final para acessar a própria inbox."
+      }
+    },
+    "schemas": {
+      "UpsertCustomerDTO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Identificador do cliente no sistema da organização (ex: id de usuário)",
+            "example": "users:482"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ana Souza"
+          },
+          "email": {
+            "type": "string",
+            "example": "ana@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "(85) 98888-7777"
+          },
+          "tags": {
+            "example": [
+              "vip"
+            ],
+            "description": "Substitui as tags do cliente pelas informadas — omitir mantém as que já estão gravadas",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "example": {
+              "plan": "pro"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "CustomerTokenResponseDTO": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token a ser enviado como `Authorization: Bearer <token>`."
+          },
+          "expires_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Instante ISO 8601 em que o token deixa de ser válido."
+          }
+        },
+        "required": [
+          "token",
+          "expires_at"
+        ]
+      },
+      "RegisterCustomerDTO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Identificador do cliente no sistema da organização (ex: id de usuário)",
+            "example": "users:482"
+          },
+          "name": {
+            "type": "string",
+            "example": "Ana Souza"
+          },
+          "email": {
+            "type": "string",
+            "example": "ana@example.com"
+          },
+          "phone": {
+            "type": "string",
+            "example": "(85) 98888-7777"
+          },
+          "tags": {
+            "example": [
+              "vip"
+            ],
+            "description": "Substitui as tags do cliente pelas informadas — omitir mantém as que já estão gravadas",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "example": {
+              "plan": "pro"
+            }
+          },
+          "issue_token": {
+            "type": "boolean",
+            "default": false,
+            "description": "Emite um token do cliente e retorna em `customer_token`. Evita a chamada separada a POST /customer-tokens quando o cliente vai abrir a inbox a seguir."
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ]
+      },
+      "CustomerResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "customer_token": {
+            "description": "Presente apenas quando a requisição pediu com `issue_token`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerTokenResponseDTO"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "email",
+          "created_at"
+        ]
+      },
+      "RegisterDeviceWithCustomerDTO": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID"
+            ]
+          },
+          "device_token": {
+            "type": "string",
+            "example": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+          },
+          "metadata": {
+            "type": "object"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/UpsertCustomerDTO"
+          },
+          "issue_token": {
+            "type": "boolean",
+            "default": false,
+            "description": "Emite um token do cliente para `customer` e retorna em `customer_token`, para o cliente ir direto à inbox. Requer `customer`."
+          }
+        },
+        "required": [
+          "platform",
+          "device_token"
+        ]
+      },
+      "DeviceInstallationResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "device_type": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID",
+              "BROWSER"
+            ]
+          },
+          "customer_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "customer_token": {
+            "description": "Presente apenas quando a requisição pediu com `issue_token`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CustomerTokenResponseDTO"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "device_type",
+          "customer_id",
+          "last_seen_at"
+        ]
+      },
+      "RegisterDeviceDTO": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "enum": [
+              "IOS",
+              "ANDROID"
+            ]
+          },
+          "device_token": {
+            "type": "string",
+            "example": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "platform",
+          "device_token"
+        ]
+      },
+      "InboxItemDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "notification_id": {
+            "type": "string",
+            "description": "A notificação de onde este item veio."
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "O `payload` da notificação, repassado sem alterações — é onde o app coloca o que seu componente de inbox precisa para renderizar ou vincular o item."
+          },
+          "read_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "null enquanto não lido."
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "notification_id",
+          "title",
+          "body",
+          "data",
+          "read_at",
+          "created_at"
+        ]
+      },
+      "CursorMetaDto": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "InboxPageDTO": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InboxItemDTO"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/CursorMetaDto"
+          },
+          "unread_count": {
+            "type": "number",
+            "description": "Itens não lidos em toda a inbox, não só nesta página — o número do badge."
+          }
+        },
+        "required": [
+          "data",
+          "meta",
+          "unread_count"
+        ]
+      },
+      "MarkInboxReadDTO": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "description": "Ids a marcar como lidos. Ids de outro cliente são ignorados, não recusados.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "InboxReadResultDTO": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "number",
+            "description": "Quantos itens esta chamada realmente marcou — ids já lidos não contam."
+          },
+          "unread_count": {
+            "type": "number",
+            "description": "O que o badge deve mostrar agora."
+          }
+        },
+        "required": [
+          "updated",
+          "unread_count"
+        ]
+      },
+      "NotificationSmsChannelDTO": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Corpo do SMS",
+            "example": "Seu código de verificação é 7987"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "NotificationEmailChannelDTO": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "Parte local do remetente, sem o domínio — é combinada com o domínio de e-mail verificado do app",
+            "example": "noreply"
+          },
+          "title": {
+            "type": "string",
+            "description": "Assunto do email",
+            "example": "Seu código de verificação"
+          },
+          "body": {
+            "type": "string",
+            "description": "Corpo do email",
+            "example": "Seu código é 7987"
+          }
+        },
+        "required": [
+          "from",
+          "title",
+          "body"
+        ]
+      },
+      "NotificationPushChannelDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Título da notificação push",
+            "example": "O evento já vai começar"
+          },
+          "body": {
+            "type": "string",
+            "description": "Corpo da notificação push",
+            "example": "Seu evento InovaNorte vai começar em 30 minutos"
+          },
+          "data": {
+            "type": "object",
+            "description": "Dados adicionais da notificação push",
+            "example": {
+              "event_id": "1234"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "NotificationInboxChannelDTO": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Título do item na inbox",
+            "example": "O evento já vai começar"
+          },
+          "body": {
+            "type": "string",
+            "description": "Corpo do item na inbox",
+            "example": "Seu evento InovaNorte vai começar em 30 minutos"
+          },
+          "data": {
+            "type": "object",
+            "description": "Dados adicionais do item na inbox",
+            "example": {
+              "event_id": "1234"
+            }
+          }
+        },
+        "required": [
+          "title",
+          "body"
+        ]
+      },
+      "NotificationChannelsDTO": {
+        "type": "object",
+        "properties": {
+          "sms": {
+            "description": "Configuração do canal de SMS",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationSmsChannelDTO"
+              }
+            ]
+          },
+          "email": {
+            "description": "Configuração do canal de email",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationEmailChannelDTO"
+              }
+            ]
+          },
+          "push": {
+            "description": "Configuração do canal de push",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationPushChannelDTO"
+              }
+            ]
+          },
+          "inbox": {
+            "description": "Configuração do canal de inbox",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationInboxChannelDTO"
+              }
+            ]
+          }
+        }
+      },
+      "BroadcastTagFilterDTO": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "description": "Tags exigidas simultaneamente (AND). As tags de um cliente valem para todos os dispositivos dele; as tags de um dispositivo valem só para o push daquele dispositivo — elas existem para instalações anônimas",
+            "example": [
+              "subscribed_for_event:1234"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      },
+      "BroadcastFiltersDTO": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "description": "Lista de filtros de tags, unidos por OR entre si",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BroadcastTagFilterDTO"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      },
+      "BroadcastDTO": {
+        "type": "object",
+        "properties": {
+          "scheduled_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Quando informado, a notificação é agendada para esta data em vez de publicada imediatamente. Deve estar no futuro e no máximo 90 dias à frente"
+          },
+          "channels": {
+            "description": "Configuração de cada canal do broadcast",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationChannelsDTO"
+              }
+            ]
+          },
+          "filters": {
+            "description": "Filtros de tags que definem o público-alvo do broadcast",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BroadcastFiltersDTO"
+              }
+            ]
+          }
+        },
+        "required": [
+          "channels",
+          "filters"
+        ]
+      },
+      "NotificationResponseChannelDTO": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Canal configurado",
+            "enum": [
+              "EMAIL",
+              "SMS",
+              "PUSH",
+              "INBOX"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "description": "Título do canal, quando aplicável"
+          },
+          "body": {
+            "type": "string",
+            "description": "Corpo do canal"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Dados adicionais específicos do canal",
+            "example": {
+              "event_id": "1234"
+            }
+          }
+        },
+        "required": [
+          "channel",
+          "body",
+          "payload"
+        ]
+      },
+      "NotificationResponseFilterEntryDTO": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "description": "Tags exigidas simultaneamente nesta entrada, quando o filtro é de dispositivos",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "codes": {
+            "description": "Código do cliente nesta entrada, quando o filtro é de clientes",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags",
+          "codes"
+        ]
+      },
+      "NotificationResponseFilterDTO": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Sujeito do filtro",
+            "enum": [
+              "CUSTOMER",
+              "DEVICE"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Tipo do filtro",
+            "enum": [
+              "ALL",
+              "TAGS",
+              "CODES"
+            ]
+          },
+          "entries": {
+            "description": "Entradas do filtro, unidas por OR entre si",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseFilterEntryDTO"
+            }
+          }
+        },
+        "required": [
+          "subject",
+          "type",
+          "entries"
+        ]
+      },
+      "NotificationResponseProgressDTO": {
+        "type": "object",
+        "properties": {
+          "processed_targets": {
+            "type": "number",
+            "description": "Quantidade de alvos já processados"
+          },
+          "total_targets": {
+            "type": "number",
+            "description": "Quantidade total de alvos"
+          },
+          "failed_targets": {
+            "type": "number",
+            "description": "Quantidade de alvos que falharam"
+          },
+          "suppressed_targets": {
+            "type": "number",
+            "description": "Quantidade de alvos suprimidos por opt-out durante a resolução"
+          }
+        },
+        "required": [
+          "processed_targets",
+          "total_targets",
+          "failed_targets",
+          "suppressed_targets"
+        ]
+      },
+      "NotificationResponseDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador da notificação"
+          },
+          "status": {
+            "type": "string",
+            "description": "Status atual da notificação",
+            "enum": [
+              "SCHEDULED",
+              "PENDING",
+              "RESOLVING",
+              "SENDING",
+              "COMPLETED",
+              "FAILED",
+              "CANCELLED"
+            ]
+          },
+          "lane": {
+            "type": "string",
+            "description": "Lane que carrega a notificação",
+            "enum": [
+              "TRANSACTIONAL",
+              "BROADCAST"
+            ]
+          },
+          "estimated_devices": {
+            "type": "number",
+            "description": "Estimativa de dispositivos alcançados — o que dimensiona o canal PUSH, cobrado por dispositivo"
+          },
+          "estimated_customers": {
+            "type": "number",
+            "description": "Estimativa de clientes alcançados — o que dimensiona os demais canais, cobrados por cliente"
+          },
+          "notification_channels": {
+            "description": "Canais configurados para a notificação",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseChannelDTO"
+            }
+          },
+          "notification_filter": {
+            "description": "Filtro que define o público-alvo da notificação",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationResponseFilterDTO"
+              }
+            ]
+          },
+          "notification_progress": {
+            "description": "Progresso de envio, ausente até a notificação começar a ser resolvida",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationResponseProgressDTO"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Data de criação da notificação"
+          },
+          "scheduled_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Data de agendamento da notificação"
+          },
+          "cancelled_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Data de cancelamento da notificação"
+          },
+          "completed_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Data de conclusão da notificação"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "lane",
+          "estimated_devices",
+          "estimated_customers",
+          "notification_channels",
+          "notification_filter",
+          "created_at"
+        ]
+      },
+      "TransactionalCustomerFilterDTO": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Código que identifica o cliente no sistema da organização",
+            "example": "user:1234"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "TransactionalFiltersDTO": {
+        "type": "object",
+        "properties": {
+          "customers": {
+            "description": "Lista de códigos de cliente, unidos por OR entre si, com no máximo 50 entradas",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionalCustomerFilterDTO"
+            }
+          }
+        },
+        "required": [
+          "customers"
+        ]
+      },
+      "TransactionalDTO": {
+        "type": "object",
+        "properties": {
+          "scheduled_at": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Quando informado, a notificação é agendada para esta data em vez de publicada imediatamente. Deve estar no futuro e no máximo 90 dias à frente"
+          },
+          "channels": {
+            "description": "Configuração de cada canal da notificação transacional",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NotificationChannelsDTO"
+              }
+            ]
+          },
+          "filters": {
+            "description": "Filtros de código de cliente que definem os destinatários da notificação",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionalFiltersDTO"
+              }
+            ]
+          }
+        },
+        "required": [
+          "channels",
+          "filters"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+---
+title: "SMS"
+description: "Configuração do canal de SMS"
+---
+
+O canal de SMS é dimensionado por **cliente** e é o canal mais caro da
+plataforma — 100 créditos por envio, refletindo o custo real das operadoras.
+Reserve SMS para o que realmente precisa desse alcance (códigos de
+verificação, avisos críticos) e prefira push ou inbox para o resto.
+
+## Payload
+
+```json
+"sms": {
+  "body": "Seu código de verificação é 7987"
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `body` | Sim | Corpo do SMS. |
+
+## Quem é alcançado
+
+Só clientes com `phone` cadastrado (`POST /customers`) entram no cálculo do
+público desse canal.

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Notifica",
+  "colors": {
+    "primary": "#16A34A",
+    "light": "#07C983",
+    "dark": "#15803D"
+  },
+  "favicon": "/favicon.ico",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guia",
+        "groups": [
+          {
+            "group": "Início",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Canais",
+            "pages": [
+              "canais/visao-geral",
+              "canais/email",
+              "canais/sms",
+              "canais/push",
+              "canais/inbox"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "sdks/server",
+              "sdks/web",
+              "sdks/mobile"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "openapi": "/api-reference/openapi.json"
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Console",
+        "href": "https://notifica.dev"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/GC-Tec/notifica"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  }
+}

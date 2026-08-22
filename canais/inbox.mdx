@@ -1,0 +1,103 @@
+---
+title: "Inbox"
+description: "Caixa de notificações do cliente e atualização em tempo real"
+---
+
+O canal de inbox entrega uma notificação persistente dentro do seu próprio
+produto — uma caixa de notificações que o cliente final consulta pelo app,
+sem depender de push chegar ou de email ser aberto. É dimensionado por
+**cliente** e custa 1 crédito por envio.
+
+## Payload de envio
+
+```json
+"inbox": {
+  "title": "O evento já vai começar",
+  "body": "Seu evento InovaNorte vai começar em 30 minutos",
+  "data": { "event_id": "1234" }
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `title` | Sim | Título do item na inbox. |
+| `body` | Sim | Corpo do item na inbox. |
+| `data` | Não | Dados adicionais para o app tratar (deep link, id de recurso etc). |
+
+## Autenticação do lado do cliente
+
+Os endpoints de inbox (`/me/*`) são chamados pelo dispositivo do cliente
+final, autenticados com `Authorization: Bearer <customer_token>` — não com a
+API key. Mine o token no seu servidor com `issue_token: true` em
+`POST /customers` ou `POST /devices`, ou separadamente em
+`POST /customer-tokens`, e entregue-o ao cliente.
+
+## Listando a inbox
+
+```bash
+curl "$NOTIFICA_BASE_URL/me/inbox?take=20" \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN"
+```
+
+Paginação por cursor: passe `meta.nextCursor` da resposta como `cursor` na
+próxima chamada. `search` filtra por título e corpo. A resposta também traz
+`unread_count` — o total de não lidos, não só da página atual.
+
+### Filtrando pelo `data`
+
+`data_contains` recebe um objeto JSON e devolve só os itens cujo `data` casa
+com **todos** os pares informados — útil quando o `data` do envio carrega o
+identificador de uma tela, uma conversa ou um pedido:
+
+```bash
+curl -G "$NOTIFICA_BASE_URL/me/inbox" \
+  --data-urlencode 'data_contains={"conversation_id":"1234"}' \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN"
+```
+
+São aceitas chaves de primeiro nível com valores string, número ou booleano,
+no máximo 5 pares por chamada. A comparação é por igualdade e respeita o tipo:
+`{"order_id":"12"}` não casa com um `data` que gravou `{"order_id":12}`.
+
+## Marcando como lida
+
+```bash
+# um lote específico (até 100 ids)
+curl -X POST "$NOTIFICA_BASE_URL/me/inbox/read" \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "ids": ["item_1", "item_2"] }'
+
+# tudo de uma vez
+curl -X POST "$NOTIFICA_BASE_URL/me/inbox/read-all" \
+  -H "Authorization: Bearer $CUSTOMER_TOKEN"
+```
+
+## Atualização em tempo real
+
+`GET /me/inbox/stream` abre uma conexão SSE que emite cada item assim que
+ele chega, com o conteúdo completo — o cliente pode inserir direto na UI sem
+precisar buscar a lista de novo.
+
+O `EventSource` nativo do navegador não permite configurar headers, então o
+token vai como query string nesse endpoint especificamente (em todo o resto
+da API, sempre `Authorization: Bearer`):
+
+```js
+const events = new EventSource(
+  `${baseUrl}/me/inbox/stream?token=${encodeURIComponent(customerToken)}`
+);
+
+events.addEventListener("inbox.item", (event) => {
+  const item = JSON.parse(event.data);
+  // inserir `item` na lista da inbox
+});
+```
+
+<Note>
+  O estado de leitura não é sincronizado entre os dispositivos de um mesmo
+  cliente ainda — marcar como lido em um aparelho não reflete nos outros.
+</Note>
+
+Veja [Web](/sdks/web) para o fluxo completo do lado do navegador, incluindo
+como manter o `customer_token` vivo sem gravá-lo em `localStorage`.

@@ -1,0 +1,111 @@
+---
+title: "Mobile"
+description: "Registrando o dispositivo e recebendo push em apps iOS e Android"
+---
+
+Um app mobile é, ele mesmo, um **dispositivo** — a instalação de push que o
+canal [Push](/canais/push) entrega para. Diferente da web, aqui não existe
+um problema de storage: o token do provedor de push (Expo, FCM ou APNs) já
+é responsabilidade do SDK de push nativo, não do notifica.dev.
+
+<Note>
+  `platform` só aceita `ios` ou `android` — não existe instalação de
+  dispositivo para navegador. Veja [Web](/sdks/web) para a inbox em tempo
+  real, que não precisa de registro nenhum.
+</Note>
+
+## Duas formas de registrar
+
+<Tabs>
+  <Tab title="Direto do app">
+    Depois que o cliente está autenticado e o app tem um `customer_token`
+    (minerado pelo seu servidor no login, do mesmo jeito descrito em
+    [Web](/sdks/web)), o próprio app registra o dispositivo direto contra o
+    notifica.dev — sem passar pelo seu backend de novo:
+
+    ```js
+    await fetch(`${NOTIFICA_BASE_URL}/me/devices`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${customerToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        platform: "ios", // ou "android"
+        device_token: expoPushToken,
+      }),
+    });
+    ```
+
+    A identidade do cliente vem do token, não do corpo da requisição — o
+    app nunca precisa reenviar `code`, `name` ou `email` aqui.
+  </Tab>
+  <Tab title="Do seu backend">
+    Alternativa igualmente válida: seu servidor registra o dispositivo com
+    a API key, tipicamente no mesmo request que já cria ou atualiza o
+    cliente (por exemplo, no login):
+
+    ```bash
+    curl -X POST "$NOTIFICA_BASE_URL/devices" \
+      -H "x-api-key: $NOTIFICA_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "platform": "android",
+        "device_token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+        "customer": { "code": "users:482", "name": "Ana Souza" }
+      }'
+    ```
+
+    Útil quando o app não fala diretamente com o notifica.dev por decisão
+    de arquitetura, ou quando o token de push só está disponível no
+    servidor (ex: recebido por um provedor terceiro antes de chegar ao
+    app).
+  </Tab>
+</Tabs>
+
+## Exemplo completo com Expo
+
+```js
+import * as Notifications from "expo-notifications";
+
+async function registerForPush(customerToken) {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== "granted") return;
+
+  const { data: expoPushToken } = await Notifications.getExpoPushTokenAsync();
+
+  await fetch(`${NOTIFICA_BASE_URL}/me/devices`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${customerToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      platform: Platform.OS === "ios" ? "ios" : "android",
+      device_token: expoPushToken,
+    }),
+  });
+}
+```
+
+Chame `registerForPush` depois do login (quando `customerToken` já existe)
+e de novo sempre que o app volta ao primeiro plano — o registro é um
+upsert por `device_token`, então repetir a chamada não cria duplicatas, só
+atualiza `last_seen_at`.
+
+## Mantendo a instalação ativa
+
+Um dispositivo sem atividade recente sai do público de push automaticamente
+(veja [Push → Quem é alcançado](/canais/push#quem-é-alcançado)). Não existe
+endpoint separado de "heartbeat" — reenviar o mesmo registro periodicamente
+(a cada abertura do app, por exemplo) já conta como atividade e mantém a
+instalação elegível.
+
+<CardGroup cols={2}>
+  <Card title="Web" icon="globe" href="/sdks/web">
+    Token em memória e inbox em tempo real no navegador.
+  </Card>
+  <Card title="Push" icon="bell" href="/canais/push">
+    Referência completa do canal de push.
+  </Card>
+</CardGroup>

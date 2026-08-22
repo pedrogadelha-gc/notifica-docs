@@ -1,0 +1,40 @@
+---
+title: "Email"
+description: "Configuração do canal de email"
+---
+
+O canal de email é dimensionado por **cliente** — cada cliente alcançado
+pelo filtro custa 5 créditos, independente de quantos dispositivos ele tem.
+
+## Payload
+
+```json
+"email": {
+  "from": "pedidos",
+  "title": "Seu pedido foi enviado",
+  "body": "O pedido #1234 saiu para entrega"
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `from` | Sim | Parte local do remetente, sem o domínio (ex: `pedidos`). É combinada com o domínio de envio verificado do app. |
+| `title` | Sim | Assunto do email. |
+| `body` | Sim | Corpo do email. |
+
+<Note>
+  `from` aceita só letras, números e os símbolos `. _ % + -` — sem `@` e sem
+  domínio. O domínio final vem da configuração de envio do app, não do
+  request.
+</Note>
+
+## Domínio de envio
+
+Um app só entrega email depois de configurar e verificar um domínio de
+envio. Requests contra um domínio ainda não verificado não são publicados.
+
+## Quem é alcançado
+
+Só clientes com `email` cadastrado (`POST /customers`) entram no cálculo do
+público desse canal — um filtro que resolve em clientes sem email
+cadastrado simplesmente não gera envios de email para eles.

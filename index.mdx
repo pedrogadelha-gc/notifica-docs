@@ -1,0 +1,68 @@
+---
+title: "Visão Geral"
+description: "O que é o notifica.dev e como ele funciona"
+---
+
+## O que é o notifica.dev
+
+O notifica.dev é uma plataforma de notificações para organizações que precisam
+avisar seus clientes por múltiplos canais — **push, email, SMS e inbox** —
+sem manter um provedor e uma integração diferente para cada um.
+
+Você registra seus clientes e os dispositivos deles, e dispara notificações
+transacionais (para um cliente específico) ou campanhas (para um público
+inteiro, segmentado por tags). O notifica.dev cuida de resolver quem deve
+receber cada canal, entregar através do provedor certo e acompanhar o
+progresso do envio.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Registre seu primeiro cliente e dispare sua primeira notificação em minutos.
+  </Card>
+  <Card title="Canais" icon="tower-broadcast" href="/canais/visao-geral">
+    Entenda a estratégia multicanal e como funciona a cobrança por créditos.
+  </Card>
+</CardGroup>
+
+## Como funciona
+
+Toda a integração gira em torno de três conceitos:
+
+<Steps>
+  <Step title="App">
+    Cada produto que você notifica é um **app**, identificado por uma API key.
+    Todas as chamadas de servidor para servidor usam essa chave no header
+    `x-api-key`.
+  </Step>
+  <Step title="Cliente e dispositivo">
+    Um **cliente** é uma pessoa do seu sistema, identificada por um `code`
+    que você já usa internamente (ex: `users:482`). Um **dispositivo** é uma
+    instalação de push (`ios` ou `android`) que pode estar associada a um
+    cliente ou existir de forma anônima, antes do login — uma aba do
+    navegador não registra dispositivo, ela recebe em tempo real pela
+    [inbox](/canais/inbox#atualização-em-tempo-real).
+  </Step>
+  <Step title="Notificação">
+    Uma notificação carrega a configuração de um ou mais canais e um filtro
+    de público. O filtro tanto pode apontar diretamente para um punhado de
+    clientes (**notificação transacional**) quanto para todo mundo que
+    combina com um conjunto de tags (**campanha**).
+  </Step>
+</Steps>
+
+Tags são o mecanismo de segmentação: uma tag em um cliente vale para ele em
+todos os canais, uma tag em um dispositivo vale só para o push daquele
+aparelho. Veja [Canais](/canais/visao-geral) para o exemplo completo.
+
+## Autenticação
+
+Existem duas credenciais, para dois contextos diferentes:
+
+| Credencial | Header | Usada por |
+| --- | --- | --- |
+| API key | `x-api-key` | Seu servidor, para registrar clientes/dispositivos e disparar notificações |
+| Token de cliente | `Authorization: Bearer <token>` | O dispositivo do cliente final, para abrir a própria inbox |
+
+O token de cliente é emitido pelo seu servidor (via `issue_token` ou
+`POST /customer-tokens`) e nunca deve ser gerado direto do navegador ou app —
+veja [Quickstart](/quickstart) para o fluxo completo.

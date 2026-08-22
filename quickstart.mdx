@@ -1,0 +1,198 @@
+---
+title: "Quickstart"
+description: "Registre um cliente e dispare sua primeira notificação"
+---
+
+Esse guia cobre o caminho mínimo: registrar um cliente, registrar um
+dispositivo, e disparar uma notificação transacional e uma campanha.
+
+<Note>
+  Os SDKs oficiais (Node.js e PHP) ainda não foram publicados. Todos os
+  exemplos abaixo usam a API HTTP diretamente — é só chamar os mesmos
+  endpoints que os SDKs vão envolver quando saírem.
+</Note>
+
+## Instalação
+
+Nenhum pacote é necessário por enquanto: toda chamada de servidor para
+servidor é um `POST` autenticado com a sua API key no header `x-api-key`.
+Você encontra a API key nas configurações do app, no [console](https://notifica.dev).
+
+```bash
+export NOTIFICA_API_KEY="sua-api-key"
+export NOTIFICA_BASE_URL="https://api.notifica.dev/v1"
+```
+
+## Endpoints obrigatórios
+
+Para integrar o mínimo possível, seu servidor precisa falar com três
+endpoints:
+
+| Endpoint | Para que serve |
+| --- | --- |
+| `POST /customers` | Registrar ou atualizar um cliente |
+| `POST /devices` | Registrar um dispositivo (push), opcionalmente já associado a um cliente |
+| `POST /notifications/transactional` ou `/broadcast` | Disparar uma notificação |
+
+## Registrando um cliente
+
+Um cliente é identificado pelo `code` que você já usa no seu sistema — o
+`POST` funciona como upsert, então chamar de novo com o mesmo `code`
+atualiza o registro em vez de duplicar.
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/customers" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "users:482",
+    "name": "Ana Souza",
+    "email": "ana@example.com",
+    "phone": "(85) 98888-7777",
+    "metadata": { "plan": "pro" }
+  }'
+```
+
+Passe `"issue_token": true` para receber de volta um `customer_token` no
+mesmo request — útil quando o cliente vai abrir a inbox logo em seguida, sem
+uma segunda chamada:
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/customers" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "code": "users:482", "name": "Ana Souza", "issue_token": true }'
+```
+
+```json
+{
+  "id": "cus_...",
+  "code": "users:482",
+  "customer_token": {
+    "token": "eyJhbGciOi...",
+    "expires_at": "2026-08-12T18:00:00Z"
+  }
+}
+```
+
+<Warning>
+  O `customer_token` autentica o próprio cliente final. Ele é minerado pelo
+  seu servidor (com a API key) e entregue ao dispositivo do cliente — nunca
+  gere esse token direto do navegador. Em apps web, mantenha-o só em memória;
+  em mobile, no Keychain/Keystore.
+</Warning>
+
+## Registrando um dispositivo
+
+Um dispositivo é uma instalação de push (`ios` ou `android`), identificada
+pelo seu próprio `device_token` (o token do Expo/FCM/APNs). Registre um
+dispositivo já associado a um cliente passando o objeto `customer` — se o
+cliente ainda não existir, ele é criado no mesmo request:
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/devices" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "ios",
+    "device_token": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+    "customer": { "code": "users:482", "name": "Ana Souza" }
+  }'
+```
+
+<Note>
+  Isso cobre o caminho mínimo. Para instalações anônimas (antes do login),
+  tags de dispositivo, e o registro feito direto do app sem passar pelo seu
+  servidor, veja [Mobile](/sdks/mobile) — inclui o exemplo completo com
+  Expo.
+</Note>
+
+## Disparando uma notificação transacional
+
+Notificação transacional é para **um destinatário específico** (até 50
+clientes por request), identificado pelo `code`. Configure só os canais que
+quer usar — aqui, push e inbox:
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/notifications/transactional" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": { "customers": [{ "code": "users:482" }] },
+    "channels": {
+      "push": { "title": "Pedido confirmado", "body": "Seu pedido #1234 foi confirmado" },
+      "inbox": { "title": "Pedido confirmado", "body": "Seu pedido #1234 foi confirmado" }
+    }
+  }'
+```
+
+## Disparando uma campanha
+
+Campanha (`broadcast`) é para **um público segmentado por tags**, com até
+100.000 alcançados por request. `filters.tags` é uma lista de grupos: as tags
+dentro de um grupo são exigidas simultaneamente (AND), os grupos entre si são
+alternativas (OR).
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/notifications/broadcast" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filters": { "tags": [{ "tags": ["evento:inovanorte", "vip"] }] },
+    "channels": {
+      "email": {
+        "from": "eventos",
+        "title": "Seu ingresso VIP chegou",
+        "body": "Confira os detalhes do acesso VIP ao InovaNorte"
+      }
+    }
+  }'
+```
+
+## Agendamentos
+
+Tanto `transactional` quanto `broadcast` aceitam `scheduled_at`: um instante
+ISO 8601 no futuro, até 90 dias à frente. Sem esse campo a notificação é
+publicada imediatamente.
+
+```bash
+curl -X POST "$NOTIFICA_BASE_URL/notifications/broadcast" \
+  -H "x-api-key: $NOTIFICA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scheduled_at": "2026-08-15T12:00:00Z",
+    "filters": { "tags": [{ "tags": ["evento:inovanorte"] }] },
+    "channels": { "push": { "title": "Começa em 1 hora", "body": "O evento InovaNorte começa daqui a pouco" } }
+  }'
+```
+
+<Tip>
+  `scheduled_at` é sempre um instante em UTC (o `Z` no final), não um horário
+  local. `2026-08-15T12:00:00Z` são 09:00 em Brasília — não escreva o
+  horário de Brasília sem converter.
+</Tip>
+
+Uma notificação agendada pode ser cancelada com
+`DELETE /notifications/{id}` até o momento em que ela é efetivamente
+disparada.
+
+## Próximos passos
+
+Isso cobre a chamada de servidor para servidor. Para de fato colocar no ar —
+entregar um token ao seu app web ou mobile, registrar dispositivos direto do
+app — veja a seção SDKs:
+
+<CardGroup cols={2}>
+  <Card title="Server" icon="server" href="/sdks/server">
+    Preview do SDK Node.js, no lugar do `curl` acima.
+  </Card>
+  <Card title="Web" icon="globe" href="/sdks/web">
+    Token do cliente em memória e inbox em tempo real no navegador.
+  </Card>
+  <Card title="Mobile" icon="mobile" href="/sdks/mobile">
+    Registro de dispositivo e push em apps iOS e Android.
+  </Card>
+  <Card title="Canais" icon="tower-broadcast" href="/canais/visao-geral">
+    Estratégia multicanal, tags e cobrança por créditos.
+  </Card>
+</CardGroup>

@@ -1,0 +1,96 @@
+---
+title: "Estratégia multicanal"
+description: "Como combinar canais, segmentar por tags e como funciona a cobrança"
+---
+
+## Um exemplo
+
+Uma loja quer avisar sobre o status de uma compra. A estratégia comum é
+combinar canais complementares em uma única notificação: **email** como
+registro formal do pedido, e **inbox** para o cliente acompanhar o status
+dentro do próprio app, em tempo real, sem precisar abrir a caixa de entrada.
+
+```json
+POST /notifications/transactional
+{
+  "filters": { "customers": [{ "code": "users:482" }] },
+  "channels": {
+    "email": {
+      "from": "pedidos",
+      "title": "Seu pedido foi enviado",
+      "body": "O pedido #1234 saiu para entrega e chega em até 3 dias úteis"
+    },
+    "inbox": {
+      "title": "Pedido enviado",
+      "body": "Seu pedido #1234 saiu para entrega",
+      "data": { "order_id": "1234" }
+    }
+  }
+}
+```
+
+Cada canal na notificação é independente: o mesmo request pode carregar
+`sms`, `email`, `push` e `inbox` ao mesmo tempo, cada um com seu próprio
+título/corpo, e o notifica.dev resolve o público de cada canal e entrega por
+onde aquele destinatário puder ser alcançado.
+
+## Tag de cliente vs. tag de dispositivo
+
+Essa é a regra que define como uma campanha alcança as pessoas certas:
+
+> Tags ficam no **cliente**. Um dispositivo carrega as próprias tags **mais**
+> as do cliente dono dele.
+
+- **Tag no cliente** alcança tudo: push em todos os dispositivos dele, e
+  SMS/email/inbox no cadastro do cliente.
+- **Tag no dispositivo** alcança só o push daquele aparelho. Ela **não** faz
+  o cliente por trás combinar com SMS/email/inbox. Tags de dispositivo
+  existem para instalações **anônimas** — um app aberto antes de alguém
+  logar.
+- Assim que uma instalação anônima identifica o usuário, migre as tags que
+  importam para o cliente. Tag de dispositivo não é um lugar durável para
+  nada que você pretenda segmentar depois.
+
+## Como o filtro combina tags
+
+`filters.tags` é uma lista de grupos. Dentro de um grupo, as tags são
+exigidas simultaneamente (AND). Entre grupos, vale qualquer um deles (OR).
+
+```jsonc
+"filters": { "tags": [
+  { "tags": ["evento:inovanorte", "vip"] },  // AND dentro do grupo
+  { "tags": ["equipe"] }                     // OR entre grupos
+]}
+// → (evento:inovanorte E vip) OU (equipe)
+```
+
+<Warning>
+  Juntar duas tags não relacionadas no mesmo grupo é o jeito mais fácil de
+  publicar uma campanha que não alcança ninguém — confirme a combinação
+  antes de disparar para um público grande.
+</Warning>
+
+## Cobrança por créditos
+
+Cada envio bem-sucedido debita créditos do plano da organização. O custo
+varia por canal, refletindo o custo real de cada provedor — SMS é
+disparadamente o mais caro:
+
+| Canal | Créditos por envio |
+| --- | --- |
+| SMS | 100 |
+| Email | 5 |
+| Push | 1 |
+| Inbox | 1 |
+
+O público de push é dimensionado por **dispositivo** (cada instalação conta
+separadamente); os demais canais são dimensionados por **cliente**. Um
+cliente com três dispositivos e uma notificação em push + inbox é debitado
+por 3 envios de push e 1 de inbox.
+
+<CardGroup cols={2}>
+  <Card title="Email" icon="envelope" href="/canais/email" />
+  <Card title="SMS" icon="comment-sms" href="/canais/sms" />
+  <Card title="Push" icon="bell" href="/canais/push" />
+  <Card title="Inbox" icon="inbox" href="/canais/inbox" />
+</CardGroup>

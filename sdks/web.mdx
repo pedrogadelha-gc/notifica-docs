@@ -1,0 +1,148 @@
+---
+title: "Web"
+description: "Integrando a inbox em tempo real em uma aplicação web"
+---
+
+Uma aplicação web não fala com o notifica.dev do mesmo jeito que o seu
+servidor: ela nunca deve carregar a API key, e o `customer_token` que ela
+usa é de curta duração (4 horas) e não pode ser guardado em `localStorage`
+nem em cookie — só em memória, na aba aberta.
+
+<Note>
+  `@notifica.dev/react` — um SDK cliente para React que implementa tudo
+  desta página (token em memória, renovação automática, `useInbox()`) —
+  ainda não foi publicado no npm. Os exemplos abaixo funcionam com
+  JavaScript puro, sem depender dele.
+</Note>
+
+## Por que não `localStorage`
+
+O `customer_token` autentica a inbox de um cliente final. Guardá-lo em
+`localStorage` faz ele sobreviver a recarregamentos e ficar exposto a
+qualquer script injetado na página por XSS — e como só o seu servidor pode
+mintá-lo (`issue_token` ou `POST /customer-tokens` exigem a API key, nunca
+disponível no navegador), mantê-lo só em memória não custa nada em UX: uma
+aba nova simplesmente busca um token novo no primeiro carregamento.
+
+## O fluxo
+
+<Steps>
+  <Step title="Seu backend expõe um endpoint de sessão">
+    Um endpoint no seu próprio servidor, autenticado do jeito que sua
+    aplicação já autentica (cookie de sessão, JWT próprio, o que for), que
+    usa a API key para mintar um `customer_token` e devolve só isso ao
+    navegador — a API key nunca chega ao cliente.
+  </Step>
+  <Step title="O navegador busca um token ao carregar">
+    Ao montar a aplicação, ela chama esse endpoint e guarda o token
+    resultante em uma variável — não em storage.
+  </Step>
+  <Step title="Renovação antes de expirar">
+    Um timer agendado para pouco antes do `expires_at` busca um token novo
+    no mesmo endpoint, silenciosamente.
+  </Step>
+</Steps>
+
+### Seu endpoint de sessão
+
+```js
+// exemplo de rota no seu backend — Express, Next.js, o framework que for
+app.get("/api/notifica/session", async (req, res) => {
+  const user = await getAuthenticatedUser(req); // sua própria autenticação
+  if (!user) return res.status(401).json({ error: "not signed in" });
+
+  const response = await fetch(`${NOTIFICA_BASE_URL}/customer-tokens`, {
+    method: "POST",
+    headers: {
+      "x-api-key": process.env.NOTIFICA_API_KEY,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ code: user.id, name: user.name, email: user.email }),
+  });
+
+  const { token, expires_at } = await response.json();
+  res.json({ token, expires_at });
+});
+```
+
+### Mantendo o token em memória, no navegador
+
+```js
+const REFRESH_BUFFER_MS = 5 * 60 * 1000; // renova 5 min antes de expirar
+
+class NotificaSession {
+  #token = null;
+  #timer = null;
+
+  async ensureToken() {
+    if (this.#token && this.#token.expiresAt - Date.now() > REFRESH_BUFFER_MS) {
+      return this.#token;
+    }
+    return this.#refresh();
+  }
+
+  async #refresh() {
+    const response = await fetch("/api/notifica/session");
+    const { token, expires_at } = await response.json();
+    this.#token = { token, expiresAt: Date.parse(expires_at) };
+
+    clearTimeout(this.#timer);
+    const delay = this.#token.expiresAt - Date.now() - REFRESH_BUFFER_MS;
+    this.#timer = setTimeout(() => this.#refresh(), Math.max(0, delay));
+
+    return this.#token;
+  }
+}
+
+const session = new NotificaSession();
+```
+
+<Tip>
+  Em uma aplicação com várias abas abertas ao mesmo tempo, coordene a
+  renovação entre elas com a [Web Locks
+  API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API) —
+  só uma aba busca um token novo por vez, e as outras recebem o resultado
+  por `BroadcastChannel`. Sem isso, cada aba renova de forma independente,
+  o que funciona mas multiplica chamadas ao seu backend sem necessidade.
+</Tip>
+
+## Lendo a inbox
+
+```js
+async function loadInbox() {
+  const { token } = await session.ensureToken();
+  const response = await fetch(`${NOTIFICA_BASE_URL}/me/inbox?take=20`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.json();
+}
+```
+
+Trate um `401` como sinal para renovar e tentar de novo uma vez — cobre o
+caso raro de o timer não ter disparado a tempo (aba em segundo plano,
+notebook suspenso).
+
+## Tempo real
+
+Veja [Inbox → Atualização em tempo real](/canais/inbox#atualização-em-tempo-real)
+para o `EventSource` com o token na query string. Como o token roda a cada
+renovação, reabra a conexão sempre que `session.ensureToken()` devolver um
+token diferente do anterior.
+
+## CORS
+
+`/me/*` aceita chamada de qualquer origem — não é preciso configurar nada
+no lado do notifica.dev para o seu domínio funcionar. A segurança desses
+endpoints vem do próprio `customer_token` (minerado só com a API key), não
+da origem da requisição, então restringir por origem não adicionaria
+proteção nenhuma. As demais rotas da API não têm essa liberação e não devem
+ser chamadas do navegador.
+
+<CardGroup cols={2}>
+  <Card title="Mobile" icon="mobile" href="/sdks/mobile">
+    Registro de dispositivo e push em apps mobile.
+  </Card>
+  <Card title="Inbox" icon="inbox" href="/canais/inbox">
+    Referência completa do canal de inbox.
+  </Card>
+</CardGroup>

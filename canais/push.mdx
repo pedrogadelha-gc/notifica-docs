@@ -1,0 +1,49 @@
+---
+title: "Push"
+description: "Configuração do canal de push"
+---
+
+O canal de push é o único dimensionado por **dispositivo**, não por cliente
+— cada instalação alcançada custa 1 crédito. Um cliente com três aparelhos
+logados gera três envios de push.
+
+## Payload
+
+```json
+"push": {
+  "title": "O evento já vai começar",
+  "body": "Seu evento InovaNorte vai começar em 30 minutos",
+  "data": { "event_id": "1234" }
+}
+```
+
+| Campo | Obrigatório | Descrição |
+| --- | --- | --- |
+| `title` | Sim | Título da notificação push. |
+| `body` | Sim | Corpo da notificação push. |
+| `data` | Não | Dados adicionais entregues junto com o push, para o app tratar (deep link, id de recurso etc). |
+
+## Registrando dispositivos
+
+Um dispositivo é registrado com `POST /devices` (servidor, com a API key) ou
+`POST /me/devices` (o próprio cliente, com o token de cliente). `platform`
+aceita só `ios` ou `android`, e `device_token` é o token do Expo/FCM/APNs
+daquela instalação — veja [Mobile](/sdks/mobile) para o fluxo completo,
+incluindo o registro direto do app sem passar pelo seu servidor.
+
+<Note>
+  Não existe instalação de push para navegador. Uma aba web recebe em tempo
+  real pela [inbox](/canais/inbox#atualização-em-tempo-real), sem registrar
+  nada — veja [Web](/sdks/web).
+</Note>
+
+## Quem é alcançado
+
+Um filtro por tag de cliente alcança **todos** os dispositivos ativos
+daquele cliente. Um filtro por tag de dispositivo alcança só as instalações
+que carregam aquela tag diretamente — veja
+[tag de cliente vs. tag de dispositivo](/canais/visao-geral#tag-de-cliente-vs-tag-de-dispositivo).
+
+Dispositivos sem atividade recente saem do público de push automaticamente;
+uma instalação silenciosa por tempo demais para de contar sem precisar ser
+removida à mão.

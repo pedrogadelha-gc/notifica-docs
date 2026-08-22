@@ -1,0 +1,128 @@
+---
+title: "Server"
+description: "Preview do SDK Node.js para integrações de servidor"
+---
+
+<Note>
+  `@notifica.dev/server` ainda não foi publicado no npm. A API abaixo já
+  reflete o pacote real — os exemplos em [Quickstart](/quickstart) usam
+  `curl` para o mesmo efeito, sem depender dele.
+</Note>
+
+```bash
+npm install @notifica.dev/server
+```
+
+```js
+import { Notifica } from "@notifica.dev/server";
+
+const notifica = new Notifica({
+  apiKey: process.env.NOTIFICA_API_KEY,
+  baseUrl: process.env.NOTIFICA_BASE_URL,
+});
+```
+
+<Warning>
+  Só instancie isso no seu backend. A API key concede acesso total ao app —
+  registrar clientes e dispositivos, mintar tokens de cliente e disparar
+  notificações — e nunca deve chegar ao navegador ou ao app mobile.
+</Warning>
+
+## Clientes
+
+```js
+const customer = await notifica.customers.register({
+  code: "users:482",
+  name: "Ana Souza",
+  email: "ana@example.com",
+  tags: ["provider"],
+});
+
+// com issueToken, a resposta já traz customer_token
+const { customer_token } = await notifica.customers.register({
+  code: "users:482",
+  name: "Ana Souza",
+  issueToken: true,
+});
+```
+
+`tags` define o público que um [broadcast](/canais/visao-geral) alcança, e é a
+lista inteira do cliente: enviar substitui o conjunto, `[]` limpa e **omitir
+mantém o que já está gravado** — então registrar o cliente a cada login não
+apaga o que foi segmentado pelo console. Máximo de 10 tags, normalizadas para
+minúsculas.
+
+## Tokens de cliente
+
+Para reemitir um token sem tocar em nenhum dado do cliente — o caso comum de
+"cliente já existe, só preciso de um token novo" (veja
+[Web](/sdks/web#o-fluxo) para o fluxo completo de renovação):
+
+```js
+const { token, expires_at } = await notifica.customerTokens.issue({
+  code: "users:482",
+  name: "Ana Souza",
+});
+```
+
+## Dispositivos
+
+```js
+await notifica.devices.register({
+  platform: "ios", // ou "android" — veja [Mobile](/sdks/mobile)
+  device_token: "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  customer: { code: "users:482", name: "Ana Souza" },
+});
+```
+
+## Notificações
+
+```js
+await notifica.notifications.transactional({
+  filters: { customers: [{ code: "users:482" }] },
+  channels: {
+    push: { title: "Pedido confirmado", body: "Seu pedido #1234 foi confirmado" },
+    inbox: { title: "Pedido confirmado", body: "Seu pedido #1234 foi confirmado" },
+  },
+});
+
+await notifica.notifications.broadcast({
+  filters: { tags: [{ tags: ["evento:inovanorte", "vip"] }] },
+  channels: {
+    email: {
+      from: "eventos",
+      title: "Seu ingresso VIP chegou",
+      body: "Confira os detalhes do acesso VIP ao InovaNorte",
+    },
+  },
+});
+
+await notifica.notifications.cancel(notificationId);
+```
+
+## Erros
+
+Uma resposta não-2xx vira `NotificaApiError`, com `status` e `body` (o corpo
+já decodificado que a API devolveu):
+
+```js
+import { NotificaApiError } from "@notifica.dev/server";
+
+try {
+  await notifica.customers.register({ code: "users:482", name: "Ana Souza" });
+} catch (error) {
+  if (error instanceof NotificaApiError) {
+    console.error(error.status, error.body);
+  }
+  throw error;
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Web" icon="globe" href="/sdks/web">
+    Entregue um customer_token ao navegador sem gravá-lo em disco.
+  </Card>
+  <Card title="Mobile" icon="mobile" href="/sdks/mobile">
+    Registro de dispositivo e push em apps iOS e Android.
+  </Card>
+</CardGroup>
