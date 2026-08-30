@@ -298,6 +298,50 @@
         ]
       }
     },
+    "/v1/me/inbox/stream": {
+      "get": {
+        "description": "Conexão `text/event-stream` de longa duração, aberta pelo cliente do usuário final. Emite dois tipos de frame, ambos nomeados — um cliente que escute só `onmessage` não recebe nenhum dos dois, use `addEventListener`:\n\n- `inbox.item` — um item chegou. O `data` é o item inteiro, para o cliente inserir na lista já renderizada sem uma chamada de volta.\n- `ping` — heartbeat a cada 25s, com `data` vazio. Existe porque uma inbox fica ociosa a maior parte da vida e o load balancer derruba conexão ociosa em 60s; ignore os frames.\n\nNão há replay: a conexão entrega o que acontece enquanto ela está aberta. Carregue `GET /me/inbox` no mount para o estado inicial e trate o stream como incremento sobre ele.",
+        "operationId": "MeInboxStreamController_stream",
+        "parameters": [
+          {
+            "name": "token",
+            "required": false,
+            "in": "query",
+            "description": "O mesmo token de cliente do header `Authorization`, aceito aqui porque o `EventSource` do navegador não consegue definir headers. O header é verificado primeiro e é o caminho preferido para qualquer cliente capaz de enviá-lo (app nativo, `fetch` com leitura em streaming). Só esta rota aceita a query string.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream aberto. O schema abaixo é o `data` de um frame `inbox.item`.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxStreamEventDTO"
+                },
+                "example": "event: inbox.item\ndata: {\"id\":\"0199c3f1-...\",\"notification_id\":\"0199c3f0-...\",\"title\":\"Pedido enviado\",\"body\":\"Seu pedido saiu para entrega.\",\"data\":{\"order_id\":\"1234\"},\"read_at\":null,\"created_at\":\"2026-08-30T12:00:00.000Z\",\"unread_count\":3}\n\nevent: ping\ndata: \n"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Stream de novos itens da inbox do cliente atual (SSE)",
+        "tags": [
+          "inbox"
+        ],
+        "x-mint": {
+          "metadata": {
+            "playground": "simple"
+          }
+        }
+      }
+    },
     "/v1/notifications/{id}": {
       "delete": {
         "operationId": "NotificationsController_cancel",
@@ -799,6 +843,53 @@
         },
         "required": [
           "updated",
+          "unread_count"
+        ]
+      },
+      "InboxStreamEventDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "notification_id": {
+            "type": "string",
+            "description": "A notificação de onde este item veio."
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "O `payload` da notificação, repassado sem alterações — é onde o app coloca o que seu componente de inbox precisa para renderizar ou vincular o item."
+          },
+          "read_at": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "null enquanto não lido."
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "unread_count": {
+            "type": "number",
+            "description": "Total de itens não lidos da inbox inteira depois deste evento — o mesmo número que `GET /me/inbox` devolve, repetido aqui para o cliente atualizar o badge sem uma segunda chamada."
+          }
+        },
+        "required": [
+          "id",
+          "notification_id",
+          "title",
+          "body",
+          "data",
+          "read_at",
+          "created_at",
           "unread_count"
         ]
       },

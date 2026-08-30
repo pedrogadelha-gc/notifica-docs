@@ -94,6 +94,15 @@ events.addEventListener("inbox.item", (event) => {
 });
 ```
 
+A conexão também emite um `event: ping` a cada 25s, com `data` vazio. Ele
+existe só para a conexão não ser derrubada por ociosidade e pode ser
+ignorado — como os dois frames são nomeados, um cliente que escute apenas
+`onmessage` não recebe nenhum dos dois.
+
+O stream não tem replay: ele entrega o que acontece enquanto está aberto.
+Carregue `GET /me/inbox` ao montar a tela para o estado inicial e trate o
+stream como incremento sobre ele.
+
 <Note>
   O estado de leitura não é sincronizado entre os dispositivos de um mesmo
   cliente ainda — marcar como lido em um aparelho não reflete nos outros.
