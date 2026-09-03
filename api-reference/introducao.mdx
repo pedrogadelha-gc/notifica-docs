@@ -1,0 +1,36 @@
+---
+title: "Introdução"
+description: "Base URL, autenticação e a especificação OpenAPI da API pública"
+---
+
+Os endpoints desta referência são gerados a partir da especificação OpenAPI
+exportada pelo backend, então acompanham a versão em produção.
+
+## Base URL
+
+Todo endpoint é versionado sob `/v1`:
+
+```bash
+https://api.notifica.dev/v1
+```
+
+## Autenticação
+
+| Credencial | Header | Usada por |
+| --- | --- | --- |
+| API key | `x-api-key` | Seu servidor, em todos os endpoints fora de `/v1/me` |
+| Token de cliente | `Authorization: Bearer <token>` | O dispositivo do cliente final, nos endpoints `/v1/me` |
+
+O token de cliente é emitido pelo seu servidor, nunca pelo navegador ou app —
+veja [Quickstart](/quickstart) para o fluxo completo.
+
+## Especificação OpenAPI
+
+<Card
+  title="openapi.json"
+  icon="brackets-curly"
+  href="https://docs.notifica.dev/api-reference/openapi.json"
+>
+  Documento OpenAPI 3.0 completo, atualizado a cada release. Importe no
+  Postman ou no Insomnia, gere um client, ou entregue ao seu agente de código.
+</Card>
