@@ -24,3 +24,14 @@ verificação, avisos críticos) e prefira push ou inbox para o resto.
 
 Só clientes com `phone` cadastrado (`POST /customers`) entram no cálculo do
 público desse canal.
+
+Um cliente que desligou `sms_enabled` fica de fora, mesmo com telefone
+cadastrado: o alvo é suprimido antes de qualquer envio e não consome créditos.
+Veja [Preferências e opt-out](/canais/preferencias) para os três caminhos que
+gravam essa decisão.
+
+<Warning>
+  Envie SMS só para quem consentiu em receber. Um descadastro pedido por
+  qualquer canal — no seu app, por telefone, por email — precisa virar um
+  `sms_enabled: false` no notifica.dev, ou os envios seguintes continuam saindo.
+</Warning>

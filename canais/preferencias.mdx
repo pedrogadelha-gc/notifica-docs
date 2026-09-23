@@ -1,0 +1,87 @@
+---
+title: "Preferências e opt-out"
+description: "Como um cliente para de receber por um canal, e como isso é respeitado no envio"
+---
+
+Todo **cliente** carrega três interruptores — um por canal de envio externo.
+Desligar um é um **opt-out**: o notifica.dev para de enviar por aquele canal
+para aquele cliente, a partir da próxima notificação.
+
+| Campo | Canal |
+| --- | --- |
+| `email_enabled` | Email |
+| `sms_enabled` | SMS |
+| `push_enabled` | Push |
+
+A inbox não aparece aqui de propósito: ela vive dentro do seu app e o cliente
+abre se quiser. Não há nada de que sair.
+
+Um cliente que nunca mexeu nas preferências recebe por todos os canais — os
+três campos voltam `true`.
+
+## Pelo app do cliente
+
+O caminho mais curto, e o que a maioria dos produtos deve oferecer: uma tela de
+preferências dentro do seu app, falando direto com o notifica.dev pelo **token
+do cliente** — o mesmo que ele já usa para ler a inbox.
+
+```json
+GET /me/preferences
+→ { "email_enabled": true, "sms_enabled": true, "push_enabled": true }
+```
+
+```json
+PATCH /me/preferences
+{ "sms_enabled": false }
+→ { "email_enabled": true, "sms_enabled": false, "push_enabled": true }
+```
+
+Só os campos enviados mudam. Desligar SMS não decide nada sobre email e push.
+
+<Note>
+  O token do cliente sai de `POST /customers` ou `POST /devices` com
+  `issue_token: true`, e não precisa do seu servidor no meio. Veja
+  [Inbox](/canais/inbox).
+</Note>
+
+## Pelo seu servidor
+
+Se o opt-out foi registrado no seu próprio produto — um formulário de
+descadastro, um atendimento, uma preferência que já existia antes do
+notifica.dev — repasse no cadastro do cliente:
+
+```json
+POST /customers
+{
+  "code": "users:482",
+  "name": "Ana Souza",
+  "preferences": { "sms_enabled": false }
+}
+```
+
+Omitir `preferences` **mantém** o que estiver gravado. Uma integração que
+recadastra o cliente a cada login não desfaz um opt-out só por não conhecer o
+campo.
+
+## Pelo console
+
+Em **Clientes**, abra o cliente e use a seção *Preferências de envio*. É o
+caminho para honrar um pedido que chegou por fora — telefone, email, WhatsApp.
+Exige a permissão `customers:manage`.
+
+## O que acontece no envio
+
+O opt-out é aplicado na **resolução do público**, antes de qualquer provedor
+ser chamado:
+
+- o alvo é **suprimido** — não vira linha, não é entregue, não é cobrado;
+- ele aparece em `suppressed_targets` na notificação, para você saber que o
+  público real foi menor que o estimado;
+- o endereço continua guardado. Um opt-out é uma decisão do cliente, não a
+  exclusão do cadastro — se ele voltar atrás, o telefone ainda está lá.
+
+<Warning>
+  Desligar um canal não é o mesmo que não ter endereço. Sem telefone, o alvo
+  vira uma linha `SKIPPED` com `NO_PHONE_NUMBER`, que é um problema de cadastro.
+  Com opt-out, não há linha nenhuma.
+</Warning>

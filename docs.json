@@ -27,7 +27,8 @@
               "canais/email",
               "canais/sms",
               "canais/push",
-              "canais/inbox"
+              "canais/inbox",
+              "canais/preferencias"
             ]
           },
           {

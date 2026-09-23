@@ -342,6 +342,70 @@
         }
       }
     },
+    "/v1/me/preferences": {
+      "get": {
+        "description": "Um cliente que nunca mexeu nas preferências recebe por todos os canais, então os três campos voltam `true`.",
+        "operationId": "MePreferencesController_read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPreferencesDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Preferências de canal do cliente atual",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "description": "Só os campos enviados mudam. `false` vale a partir do próximo envio: o alvo passa a ser suprimido na resolução do público, e nem chega a ser cobrado.",
+        "operationId": "MePreferencesController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerPreferencesDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPreferencesDTO"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "CustomerTokenAuth": []
+          }
+        ],
+        "summary": "Liga ou desliga canais para o cliente atual",
+        "tags": [
+          "me"
+        ]
+      }
+    },
     "/v1/notifications/{id}": {
       "delete": {
         "operationId": "NotificationsController_cancel",
@@ -496,6 +560,23 @@
       }
     },
     "schemas": {
+      "UpdateCustomerPreferencesDTO": {
+        "type": "object",
+        "properties": {
+          "email_enabled": {
+            "type": "boolean",
+            "description": "Envie `false` para parar de enviar e-mails a este cliente"
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "description": "Envie `false` para parar de enviar SMS a este cliente"
+          },
+          "push_enabled": {
+            "type": "boolean",
+            "description": "Envie `false` para parar de enviar push a este cliente"
+          }
+        }
+      },
       "UpsertCustomerDTO": {
         "type": "object",
         "properties": {
@@ -531,6 +612,14 @@
             "example": {
               "plan": "pro"
             }
+          },
+          "preferences": {
+            "description": "Liga ou desliga canais para este cliente. Só os campos enviados mudam, e omitir o objeto inteiro mantém o que está gravado — use para repassar um opt-out registrado no seu próprio produto.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCustomerPreferencesDTO"
+              }
+            ]
           }
         },
         "required": [
@@ -592,6 +681,14 @@
               "plan": "pro"
             }
           },
+          "preferences": {
+            "description": "Liga ou desliga canais para este cliente. Só os campos enviados mudam, e omitir o objeto inteiro mantém o que está gravado — use para repassar um opt-out registrado no seu próprio produto.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCustomerPreferencesDTO"
+              }
+            ]
+          },
           "issue_token": {
             "type": "boolean",
             "default": false,
@@ -638,6 +735,28 @@
           "name",
           "email",
           "created_at"
+        ]
+      },
+      "CustomerPreferencesDTO": {
+        "type": "object",
+        "properties": {
+          "email_enabled": {
+            "type": "boolean",
+            "description": "Falso quando o cliente optou por não receber e-mails"
+          },
+          "sms_enabled": {
+            "type": "boolean",
+            "description": "Falso quando o cliente optou por não receber SMS"
+          },
+          "push_enabled": {
+            "type": "boolean",
+            "description": "Falso quando o cliente optou por não receber push"
+          }
+        },
+        "required": [
+          "email_enabled",
+          "sms_enabled",
+          "push_enabled"
         ]
       },
       "RegisterDeviceWithCustomerDTO": {
